@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NOBITA PRO - LIVE SERVER</title>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        /* --- MATRIX THEME --- */
+        body { background: black; color: #00ff41; font-family: 'Rajdhani', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; user-select: none; }
+        
+        .box { 
+            border: 1px solid #00ff41; padding: 30px; text-align: center; 
+            background: rgba(0,20,0,0.95); box-shadow: 0 0 20px rgba(0,255,65,0.2); 
+            width: 90%; max-width: 400px; border-radius: 10px;
+        }
+
+        h1, h2 { margin: 0 0 10px 0; text-shadow: 0 0 10px #00ff41; letter-spacing: 2px; }
+        
+        input { 
+            background: #111; border: 1px solid #00ff41; color: white; 
+            padding: 12px; width: 85%; text-align: center; font-size: 20px; 
+            margin: 15px 0; font-family: 'Rajdhani'; outline: none;
+            transition: 0.3s;
+        }
+        input:focus { box-shadow: 0 0 15px rgba(0,255,65,0.5); }
+
+        button { 
+            background: #003300; color: #00ff41; border: 1px solid #00ff41; 
+            padding: 12px 40px; cursor: pointer; font-size: 18px; font-weight: bold; 
+            margin-top: 10px; transition: 0.3s; width: 100%;
+        }
+        button:hover { background: #00ff41; color: black; box-shadow: 0 0 20px #00ff41; }
+        button:active { transform: scale(0.95); }
+
+        .hidden { display: none; }
+        
+        /* RESULT STYLES */
+        #resultDisplay { font-size: 60px; margin: 20px 0; font-weight: bold; text-shadow: 0 0 20px currentColor; }
+        .server-status { color: #00ff41; font-size: 12px; margin-bottom: 20px; animation: blink 2s infinite; }
+        
+        @keyframes blink { 0% {opacity: 1;} 50% {opacity: 0.5;} 100% {opacity: 1;} }
+    </style>
+</head>
+<body>
+
+    <div id="loginScreen" class="box">
+        <h1>SERVER ACCESS</h1>
+        <div class="server-status">● SERVER ONLINE: v1000-1</div>
+        
+        <input type="text" id="keyInput" placeholder="ENTER VIP KEY">
+        <br>
+        <button onclick="loginUser()">VERIFY KEY</button>
+        <p id="msg" style="color: red; margin-top: 15px; font-weight: bold; font-size: 14px; min-height: 20px;"></p>
+    </div>
+
+    <div id="dashScreen" class="box hidden">
+        <h2>NOBITA PRO AI</h2>
+        <div style="color: yellow; font-size: 12px; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 10px;">
+            SECURE CONNECTION ESTABLISHED
+        </div>
+        
+        <input type="number" id="periodInput" placeholder="LAST PERIOD (e.g. 245)">
+        <br>
+        <button onclick="getPrediction()">PREDICT NEXT</button>
+        
+        <div id="resultDisplay">WAITING...</div>
+        <div id="confLevel" style="color: #888; font-size: 14px;">AI READY</div>
+        
+        <button onclick="location.reload()" style="margin-top: 20px; background: transparent; border: 1px solid #333; color: #555; font-size: 12px; padding: 5px;">LOGOUT</button>
+    </div>
+
+    <script>
+        // ✅ UPDATED SERVER URL
+        const BACKEND_URL = "https://v1000-1.onrender.com"; 
+
+        async function loginUser() {
+            const key = document.getElementById('keyInput').value.trim();
+            const btn = document.querySelector('button');
+            const msg = document.getElementById('msg');
+
+            if(!key) { msg.innerText = "ERROR: KEY EMPTY"; return; }
+
+            // Loading Animation
+            btn.innerText = "CONNECTING...";
+            btn.style.opacity = "0.7";
+            msg.innerText = "";
+            
+            try {
+                // Backend call
+                const response = await fetch(`${BACKEND_URL}/api/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: key })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Success
+                    document.getElementById('loginScreen').classList.add('hidden');
+                    document.getElementById('dashScreen').classList.remove('hidden');
+                } else {
+                    // Fail
+                    msg.innerText = "ACCESS DENIED: " + data.message;
+                    btn.innerText = "VERIFY KEY";
+                    btn.style.opacity = "1";
+                }
+            } catch (error) {
+                // Server Error
+                msg.innerText = "SERVER ERROR: Check Internet or URL";
+                btn.innerText = "VERIFY KEY";
+                btn.style.opacity = "1";
+                console.error(error);
+            }
+        }
+
+        async function getPrediction() {
+            const period = document.getElementById('periodInput').value;
+            const display = document.getElementById('resultDisplay');
+            const conf = document.getElementById('confLevel');
+            
+            if(!period || period.length < 3) { alert("Enter Valid Period Number"); return; }
+
+            display.innerText = "ANALYZING...";
+            display.style.fontSize = "30px";
+            display.style.color = "white";
+            conf.innerText = "Reading Algorithms...";
+
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/predict`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ last_period: period })
+                });
+
+                const data = await response.json();
+
+                // Show Result
+                display.style.fontSize = "60px";
+                display.innerText = data.prediction;
+                display.style.color = data.prediction === 'BIG' ? '#00ff41' : '#ff3333';
+                conf.innerText = `CONFIDENCE: ${data.confidence}% | NEXT: ${data.period}`;
+
+            } catch (error) {
+                display.innerText = "ERROR";
+                conf.innerText = "Server Timeout";
+            }
+        }
+    </script>
+</body>
+</html>
